@@ -12,7 +12,7 @@ import regex as re
 
 from talon.utils import to_unicode
 
-from talon.signature.constants import SIGNATURE_MAX_LINES
+from talon.signature.constants import SIGNATURE_MAX_LINES, TOO_LONG_SIGNATURE_LINE
 
 
 rc = re.compile
@@ -32,9 +32,21 @@ RE_SEPARATOR = rc('^[\s]*---*[\s]*$')
 RE_SPECIAL_CHARS = rc(('^[\s]*([\*]|#|[\+]|[\^]|-|[\~]|[\&]|[\$]|_|[\!]|'
                        '[\/]|[\%]|[\:]|[\=]){10,}[\s]*$'))
 
-RE_SIGNATURE_WORDS = rc(('(T|t)hank.*,|(B|b)est|(R|r)egards|'
-                         '^sent[ ]{1}from[ ]{1}my[\s,!\w]*$|BR|(S|s)incerely|'
-                         '(C|c)orporation|Group'))
+RE_SIGNATURE_WORDS = rc(
+        u'|'.join([
+        # English
+         '(T|t)hank.*(,|.|$)|(B|b)est|(R|r)egard.*(,|.|$)','(T|t)ks', 'rgrd.*',
+         'BR(,|.|$)'
+         '^sent[ ]{1}from[ ]{1}my[\s,!\w]*$|BR|(S|s)incerely',
+        '(C|c)orporation|Group',
+        # German
+        '(B|b)este', u'(G|g)rüß.*,', 'Danke',
+        # Spanish
+        'Saludo.*', '(G|g)racias(,|.|$)',
+        # Portuguese
+        'Obrigado(,|.|$)', 'Att.*(,|.|$)', 'Atenciosamente(,|.|$)', u'Abraço.*(,|.|$)',
+        ])
+)
 
 # Taken from:
 # http://www.cs.cmu.edu/~vitor/papers/sigFilePaper_finalversion.pdf
@@ -50,7 +62,9 @@ BAD_SENDER_NAMES = [
     # first level domains
     'com', 'org', 'net', 'ru',
     # bad words
-    'mailto'
+    'mailto',
+    # chinese domains
+    'qq', '163'
     ]
 
 
@@ -209,19 +223,27 @@ def many_capitalized_words(s):
 
 def has_signature(body, sender):
     '''Checks if the body has signature. Returns True or False.'''
-    non_empty = [line for line in body.splitlines() if line.strip()]
-    candidate = non_empty[-SIGNATURE_MAX_LINES:]
+    # split signature long lines e.g. Tel: +34 123 456 789 | Fax: +34 123 456 789
+    non_empty = flatten_list([line.split(' | ') for line in body.splitlines() if line.strip()])
+    """
+    Removing long lines from emails before looping through candidates as sometimes we have:
+    >>> Jean Phelippe
+    >>> ABC Logistics
+    >>> Germany
+    >>> Wir arbeiten ausschließlich auf Grundlage der Allgemeinen Deutschen Spediteurbedingungen, ADSp2017.
+    >>> This e-mail and any attachments are confidential and may also be privileged. If you are not the named recipient, please notify         the sender immediately and do not disclose the contents to another person[...]
+    """
+    not_too_long = [line for line in non_empty if len(line) <= TOO_LONG_SIGNATURE_LINE]
+    candidates = not_too_long[-SIGNATURE_MAX_LINES:]
     upvotes = 0
-    for line in candidate:
-        # we check lines for sender's name, phone, email and url,
-        # those signature lines don't take more then 27 lines
-        if len(line.strip()) > 27:
-            continue
-        elif contains_sender_names(sender)(line):
+    for line in candidates:
+        if contains_sender_names(sender)(line):
             return True
         elif (binary_regex_search(RE_RELAX_PHONE)(line) +
               binary_regex_search(RE_EMAIL)(line) +
               binary_regex_search(RE_URL)(line) == 1):
+              upvotes += 1
+        elif (binary_regex_search(RE_SIGNATURE_WORDS)(line) == 1):
             upvotes += 1
     if upvotes > 1:
         return True

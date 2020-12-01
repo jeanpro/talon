@@ -174,6 +174,13 @@ def html_to_text(string):
     return html_tree_to_text(tree)
 
 
+def html_body_to_text_body(msg_body):
+    html_tree = html_document_fromstring(msg_body)
+    if html_tree:
+        return html_tree_to_text(html_tree)
+    else:
+        return None
+
 def html_fromstring(s):
     """Parse html tree from string. Return None if the string can't be parsed.
     """
@@ -249,6 +256,7 @@ def _html5lib_parser():
         # instead of "div", throwing the algo off
         namespaceHTMLElements=False
     )
+
 
 
 _UTF8_DECLARATION = (b'<meta http-equiv="Content-Type" content="text/html;'

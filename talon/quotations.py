@@ -40,6 +40,8 @@ RE_ON_DATE_SMB_WROTE = re.compile(
             'Am',
             # Portuguese
             'Em',
+            # Spanish
+            'El',
             # Norwegian
             u'På',
             # Swedish, Danish
@@ -132,7 +134,7 @@ RE_EMPTY_QUOTATION = re.compile(
 RE_ORIGINAL_MESSAGE = re.compile(u'[\s]*[-]+[ ]*({})[ ]*[-]+'.format(
     u'|'.join((
         # English
-        'Original Message', 'Reply Message',
+        'Original Message', 'Reply Message', '&nbsp;Original&nbsp;','-Original-'
         # German
         u'Ursprüngliche Nachricht', 'Antwort Nachricht',
         # Danish
@@ -142,13 +144,13 @@ RE_ORIGINAL_MESSAGE = re.compile(u'[\s]*[-]+[ ]*({})[ ]*[-]+'.format(
 RE_FROM_COLON_OR_DATE_COLON = re.compile(u'((_+\r?\n)?[\s]*:?[*]?({})[\s]?:([^\n$]+\n){{1,2}}){{2,}}'.format(
     u'|'.join((
         # "From" in different languages.
-        'From', 'Van', 'De', 'Von', 'Fra', u'Från',
+        'From', 'Van', 'De', 'Von', 'Fra', u'Från', u'寄件者',
         # "Date" in different languages.
-        'Date', '[S]ent', 'Datum', u'Envoyé', 'Skickat', 'Sendt', 'Gesendet',
+        'Date', '[S]ent', 'Datum', u'Envoyé', 'Skickat', 'Sendt', 'Gesendet', u'寄件日期', 'Enviado',
         # "Subject" in different languages.
-        'Subject', 'Betreff', 'Objet', 'Emne', u'Ämne',
+        'Subject', 'Betreff', 'Objet', 'Emne', u'Ämne', 'Assunto',
         # "To" in different languages.
-        'To', 'An', 'Til', u'À', 'Till'
+        'To', 'An', 'Til', u'À', 'Till', u'收件者', 'Para'
     ))), re.I | re.M)
 
 # ---- John Smith wrote ----
@@ -457,7 +459,8 @@ def _extract_from_html(msg_body):
 
     msg_body = msg_body.replace(b'\r\n', b'\n')
 
-    msg_body = re.sub(r"\<\?xml.+\?\>|\<\!DOCTYPE.+]\>", "", msg_body)
+    # FIXME: The line below is not working with byte-like strings
+    # msg_body = re.sub(r"\<\?xml.+\?\>|\<\!DOCTYPE.+]\>", b'', msg_body)
 
     html_tree = html_document_fromstring(msg_body)
 
@@ -684,3 +687,4 @@ def register_xpath_extensions():
     ns.prefix = 'mg'
     ns['text_content'] = text_content
     ns['tail'] = tail
+
