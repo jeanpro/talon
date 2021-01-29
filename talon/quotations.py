@@ -495,7 +495,6 @@ def _extract_from_html(msg_body):
     # Remove checkpoints
     lines = [re.sub(html_quotations.CHECKPOINT_PATTERN, '', line)
              for line in lines]
-
     # Use plain text quotation extracting algorithm
     markers = mark_message_lines(lines)
     return_flags = []

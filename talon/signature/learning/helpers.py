@@ -18,7 +18,22 @@ from talon.signature.constants import SIGNATURE_MAX_LINES, TOO_LONG_SIGNATURE_LI
 rc = re.compile
 
 RE_EMAIL = rc('\S@\S')
-RE_RELAX_PHONE = rc('(\(? ?[\d]{2,3} ?\)?.{,3}?){2,}')
+# Reframing RE_RELAX_PHONE for any country based on 9 digits and (optional) plus sign at the begining (e.g. +55 11 9213123123)
+#RE_RELAX_PHONE = rc('(\(? ?[\d]{2,3} ?\)?.{,3}?){2,}')
+RE_RELAX_PHONE = rc(
+    "".join([
+        '(?=.*[-+()])'            # positive look ahead to match at least one parenthesis, dash or plus sign
+        "\+?([0-9]){0,3}?",       # Matches plus sign (optional) followed by up to 3 digits
+        '\s*',                    # followed by an optional space or multiple spaces
+        '(',
+            '[0-9]',       # A digit
+            '[\s-()]*',    # followed by an optional space or dash or parenthesis or more than one of those
+        ')',
+        '{9,}'                     # That appears nine or more times
+    ])
+)
+
+
 RE_URL = rc(r'''https?://|www\.[\S]+\.[\S]''')
 
 # Taken from:
@@ -241,7 +256,7 @@ def has_signature(body, sender):
             return True
         elif (binary_regex_search(RE_RELAX_PHONE)(line) +
               binary_regex_search(RE_EMAIL)(line) +
-              binary_regex_search(RE_URL)(line) == 1):
+              binary_regex_search(RE_URL)(line) >= 1):
               upvotes += 1
         elif (binary_regex_search(RE_SIGNATURE_WORDS)(line) == 1):
             upvotes += 1
